@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: ${APP_NAME:api-gateway}
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          # Las rutas se definen a mano abajo (no se generan solas desde Eureka)
+          enabled: false
+      routes:
+        # ---------- ms-alquiler ----------
+        - id: ms-alquiler-api
+          uri: lb://${ALQUILER_SERVICE_ID:ms-alquiler}
+          predicates:
+            - Path=${API_CONTEXT_PATH:/api}/clientes/**,${API_CONTEXT_PATH:/api}/ordenes-alquiler/**
+        - id: ms-alquiler-docs
+          uri: lb://${ALQUILER_SERVICE_ID:ms-alquiler}
+          predicates:
+            - Path=/alquiler/v3/api-docs/**
+          filters:
+            - RewritePath=/alquiler/(?<segment>.*), ${API_CONTEXT_PATH:/api}/$\{segment}
+        # ---------- ms-compras ----------
+        - id: ms-compras-api
+          uri: lb://${COMPRAS_SERVICE_ID:ms-compras}
+          predicates:
+            - Path=${API_CONTEXT_PATH:/api}/proveedores/**,${API_CONTEXT_PATH:/api}/ordenes-compra/**
+        - id: ms-compras-docs
+          uri: lb://${COMPRAS_SERVICE_ID:ms-compras}
+          predicates:
+            - Path=/compras/v3/api-docs/**
+          filters:
+            - RewritePath=/compras/(?<segment>.*), ${API_CONTEXT_PATH:/api}/$\{segment}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:true}
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: ${EUREKA_PREFER_IP:true}
+    lease-renewal-interval-in-seconds: ${EUREKA_RENEWAL_INTERVAL:5}
+    lease-expiration-duration-in-seconds: ${EUREKA_EXPIRATION:15}
+
+# Swagger UI unico del sistema: agrupa la documentacion de los microservicios
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: ms-alquiler
+        url: /alquiler/v3/api-docs
+      - name: ms-compras
+        url: /compras/v3/api-docs
+
+logging:
+  file:
+    name: ${LOG_DIR:./logs}/api-gateway.log
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    org.springframework.cloud.gateway: ${LOG_LEVEL_GATEWAY:INFO}
