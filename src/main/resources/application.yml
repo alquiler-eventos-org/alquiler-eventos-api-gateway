@@ -8,6 +8,17 @@ spring:
           # Las rutas se definen a mano abajo (no se generan solas desde Eureka)
           enabled: false
       routes:
+        # ---------- ms-seguridad ----------
+        - id: ms-seguridad-api
+          uri: lb://${SEGURIDAD_SERVICE_ID:ms-seguridad}
+          predicates:
+            - Path=${API_CONTEXT_PATH:/api}/auth/**,${API_CONTEXT_PATH:/api}/usuarios/**,${API_CONTEXT_PATH:/api}/roles/**
+        - id: ms-seguridad-docs
+          uri: lb://${SEGURIDAD_SERVICE_ID:ms-seguridad}
+          predicates:
+            - Path=/seguridad/v3/api-docs/**
+          filters:
+            - RewritePath=/seguridad/(?<segment>.*), ${API_CONTEXT_PATH:/api}/$\{segment}
         # ---------- ms-alquiler ----------
         - id: ms-alquiler-api
           uri: lb://${ALQUILER_SERVICE_ID:ms-alquiler}
@@ -50,6 +61,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     urls:
+      - name: ms-seguridad
+        url: /seguridad/v3/api-docs
       - name: ms-alquiler
         url: /alquiler/v3/api-docs
       - name: ms-compras
@@ -61,3 +74,9 @@ logging:
   level:
     root: ${LOG_LEVEL_ROOT:INFO}
     org.springframework.cloud.gateway: ${LOG_LEVEL_GATEWAY:INFO}
+
+app:
+  security:
+    jwt:
+      secret: ${SECURITY_JWT_SECRET:}
+      issuer: ${SECURITY_JWT_ISSUER:alquiler-eventos-seguridad}
