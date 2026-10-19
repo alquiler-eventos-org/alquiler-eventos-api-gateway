@@ -2,9 +2,9 @@
 
 API Gateway (Spring Cloud Gateway) del sistema de alquiler de equipos para eventos
 (FIUNI - Sistemas Web y Distribuidos). Es la **unica puerta de entrada**: enruta las
-peticiones a `ms-alquiler` y `ms-compras` descubriendolos por nombre en **Eureka**
-(`lb://nombre-del-servicio`) y ofrece un **Swagger UI unico** con la documentacion
-de ambos microservicios.
+peticiones a `ms-seguridad`, `ms-alquiler` y `ms-compras` descubriendolos por nombre en
+**Eureka** (`lb://nombre-del-servicio`), **valida el JWT antes de rutear** y ofrece un
+**Swagger UI unico** con la documentacion de los tres microservicios.
 
 ## Stack
 
@@ -13,14 +13,16 @@ de ambos microservicios.
 | Java | 21 |
 | Spring Boot | 3.4.5 |
 | Spring Cloud (Gateway + Eureka Client) | 2024.0.1 |
+| Spring Security + OAuth2 Resource Server | incluido en Spring Boot |
 | SpringDoc OpenAPI (WebFlux UI) | 2.8.5 |
 | Maven | 3.9+ |
 
 ## Orden de arranque
 
-1. `alquiler-eventos-eureka` (puerto 8761)
-2. `ms-alquiler` (8081) y `ms-compras` (8082)
-3. `api-gateway` (8080) con `mvn spring-boot:run`
+1. Redis (servidor compartido, solo necesario para la Entrega 3)
+2. `alquiler-eventos-eureka` (puerto 8761)
+3. `ms-seguridad` (8083), `ms-alquiler` (8081) y `ms-compras` (8082)
+4. `api-gateway` (8080) con `mvn spring-boot:run`
 
 ## URLs
 
@@ -33,8 +35,10 @@ de ambos microservicios.
 
 | Ruta en el gateway | Destino (Eureka) |
 |---|---|
+| `/api/auth/**`, `/api/usuarios/**`, `/api/roles/**` | `ms-seguridad` |
 | `/api/clientes/**`, `/api/ordenes-alquiler/**` | `ms-alquiler` |
 | `/api/proveedores/**`, `/api/ordenes-compra/**` | `ms-compras` |
+| `/seguridad/v3/api-docs` -> `/api/v3/api-docs` | OpenAPI de `ms-seguridad` |
 | `/alquiler/v3/api-docs` -> `/api/v3/api-docs` | OpenAPI de `ms-alquiler` |
 | `/compras/v3/api-docs` -> `/api/v3/api-docs` | OpenAPI de `ms-compras` |
 
@@ -45,11 +49,12 @@ de ambos microservicios.
 | `SERVER_PORT` | `8080` | Puerto del gateway |
 | `APP_NAME` | `api-gateway` | Nombre en Eureka |
 | `API_CONTEXT_PATH` | `/api` | Context path de los microservicios |
+| `SEGURIDAD_SERVICE_ID` | `ms-seguridad` | Nombre del servicio de seguridad en Eureka |
 | `ALQUILER_SERVICE_ID` | `ms-alquiler` | Nombre del servicio de alquiler en Eureka |
 | `COMPRAS_SERVICE_ID` | `ms-compras` | Nombre del servicio de compras en Eureka |
 | `EUREKA_DEFAULT_ZONE` | `http://localhost:8761/eureka/` | URL de Eureka |
 | `EUREKA_ENABLED` | `true` | Habilita el registro/descubrimiento |
-| `EUREKA_PREFER_IP` | `true` | Registrar por IP en vez de hostname |
+| `EUREKA_PREFER_IP` | **`false`** | `true` registra por IP de LAN (falla en local por firewall) |
 | `LOG_DIR` | `./logs` | Carpeta del archivo de log |
 | `LOG_LEVEL_ROOT` | `INFO` | Nivel de log general |
 | `LOG_LEVEL_GATEWAY` | `INFO` | Nivel de log de Spring Cloud Gateway |
