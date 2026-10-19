@@ -59,3 +59,23 @@ de ambos microservicios.
 El `server` del OpenAPI de cada microservicio debe apuntar al gateway
 (`app.openapi.server-url`, por defecto `http://localhost:8080/api`) para que
 "Try it out" pase por el gateway.
+
+## Entrega 3: seguridad JWT en el Gateway
+
+El gateway valida el JWT **antes de rutear** (`GatewaySecurityConfig`):
+
+- Público: `/api/auth/login`, `/swagger-ui.html`, `/swagger-ui/**`,
+  `/v3/api-docs/**`, los docs `/seguridad|compras|alquiler/v3/api-docs/**`,
+  `/actuator/health` y `OPTIONS`.
+- Todo lo demás exige `Authorization: Bearer <JWT>` válido (firma + `iss` +
+  `exp`). Si falta, está vencido o alterado → **401**; si el rol no alcanza →
+  **403**. Ambas respuestas usan el formato `ApiError` (`GatewaySecurityErrorHandler`).
+
+| Variable | Defecto | Descripcion |
+|---|---|---|
+| `SECURITY_JWT_SECRET` | — | Base64 de 32+ bytes; **el mismo en todos los servicios** |
+| `SECURITY_JWT_ISSUER` | `alquiler-eventos-seguridad` | Emisor esperado |
+| `SECURITY_JWT_ALGORITHM` | `HS256` | `HS256`, `HS384` o `HS512` |
+
+En Swagger UI, botón **Authorize** y pegar **solo el token** (sin `Bearer`).
+

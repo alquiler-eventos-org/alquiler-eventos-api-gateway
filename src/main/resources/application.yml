@@ -80,3 +80,4 @@ app:
     jwt:
       secret: ${SECURITY_JWT_SECRET:}
       issuer: ${SECURITY_JWT_ISSUER:alquiler-eventos-seguridad}
+      algorithm: ${SECURITY_JWT_ALGORITHM:HS256}

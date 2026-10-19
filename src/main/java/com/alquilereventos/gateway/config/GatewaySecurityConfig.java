@@ -25,18 +25,30 @@ public class GatewaySecurityConfig {
 
     @Bean
     ReactiveJwtDecoder jwtDecoder(@Value("${app.security.jwt.secret}") String secret,
-                                  @Value("${app.security.jwt.issuer}") String issuer) {
+                                  @Value("${app.security.jwt.issuer}") String issuer,
+                                  @Value("${app.security.jwt.algorithm:HS256}") String algorithm) {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException("SECURITY_JWT_SECRET es obligatorio");
         }
-        SecretKey key = new SecretKeySpec(Base64.getDecoder().decode(secret), "HmacSHA256");
-        NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+        MacAlgorithm mac = macAlgorithm(algorithm);
+        SecretKey key = new SecretKeySpec(Base64.getDecoder().decode(secret), mac.getName());
+        NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withSecretKey(key).macAlgorithm(mac).build();
         decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
         return decoder;
     }
 
+    private static MacAlgorithm macAlgorithm(String algorithm) {
+        return switch (algorithm == null ? "HS256" : algorithm.trim().toUpperCase()) {
+            case "HS256" -> MacAlgorithm.HS256;
+            case "HS384" -> MacAlgorithm.HS384;
+            case "HS512" -> MacAlgorithm.HS512;
+            default -> throw new IllegalStateException("Algoritmo JWT no soportado: " + algorithm);
+        };
+    }
+
     @Bean
-    SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+    SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
+                                                     GatewaySecurityErrorHandler errorHandler) {
         JwtGrantedAuthoritiesConverter roles = new JwtGrantedAuthoritiesConverter();
         roles.setAuthoritiesClaimName("roles");
         roles.setAuthorityPrefix("ROLE_");
@@ -45,11 +57,14 @@ public class GatewaySecurityConfig {
 
         return http.csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchange -> exchange
-                        .pathMatchers("/api/auth/login", "/swagger-ui/**", "/v3/api-docs/**",
+                        .pathMatchers("/api/auth/login", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
                                 "/seguridad/v3/api-docs/**", "/compras/v3/api-docs/**", "/alquiler/v3/api-docs/**",
                                 "/actuator/health").permitAll()
                         .pathMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .anyExchange().authenticated())
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(errorHandler)
+                        .accessDeniedHandler(errorHandler))
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(
                         new ReactiveJwtAuthenticationConverterAdapter(converter))))
                 .build();
