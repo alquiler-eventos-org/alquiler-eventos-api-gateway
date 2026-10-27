@@ -23,7 +23,7 @@ spring:
         - id: ms-alquiler-api
           uri: lb://${ALQUILER_SERVICE_ID:ms-alquiler}
           predicates:
-            - Path=${API_CONTEXT_PATH:/api}/clientes/**,${API_CONTEXT_PATH:/api}/ordenes-alquiler/**
+            - Path=${API_CONTEXT_PATH:/api}/clientes/**,${API_CONTEXT_PATH:/api}/ordenes-alquiler/**,${API_CONTEXT_PATH:/api}/equipos/**
         - id: ms-alquiler-docs
           uri: lb://${ALQUILER_SERVICE_ID:ms-alquiler}
           predicates:
