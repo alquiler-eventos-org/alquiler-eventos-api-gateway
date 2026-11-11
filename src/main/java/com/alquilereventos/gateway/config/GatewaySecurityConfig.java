@@ -13,10 +13,15 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsConfigurationSource;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 
 /** Filtro reactivo del Gateway: rechaza JWT invalido antes de rutear. */
 @Configuration(proxyBeanMethods = false)
@@ -46,6 +51,27 @@ public class GatewaySecurityConfig {
         };
     }
 
+    /**
+     * CORS: la UI (React) llama directo al Gateway desde otro origen (por ejemplo
+     * http://localhost:5173), asi que el Gateway responde el preflight y agrega las cabeceras
+     * CORS en todas las respuestas, incluidos los 401/403 del filtro JWT. Los origenes
+     * permitidos salen de CORS_ALLOWED_ORIGINS (separados por coma).
+     */
+    @Bean
+    CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:http://localhost:5173}") String allowedOrigins) {
+        List<String> origins = Arrays.stream(allowedOrigins.split(",")).map(String::trim)
+                .filter(o -> !o.isEmpty()).toList();
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(origins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
     @Bean
     SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
                                                      GatewaySecurityErrorHandler errorHandler) {
@@ -56,6 +82,7 @@ public class GatewaySecurityConfig {
         converter.setJwtGrantedAuthoritiesConverter(roles);
 
         return http.csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers("/api/auth/login", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
                                 "/seguridad/v3/api-docs/**", "/compras/v3/api-docs/**", "/alquiler/v3/api-docs/**",

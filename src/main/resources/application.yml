@@ -76,6 +76,9 @@ logging:
     org.springframework.cloud.gateway: ${LOG_LEVEL_GATEWAY:INFO}
 
 app:
+  cors:
+    # Origenes del front que pueden llamar al gateway (separados por coma)
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   security:
     jwt:
       secret: ${SECURITY_JWT_SECRET:}
